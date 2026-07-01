@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-ffb6c1?style=for-the-badge&logo=python&logoColor=white">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.12%2B-ffb6c1?style=for-the-badge&logo=python&logoColor=white">
   <img alt="discord.py" src="https://img.shields.io/badge/discord.py-2.7.1-cba6f7?style=for-the-badge&logo=discord&logoColor=white">
   <img alt="Database" src="https://img.shields.io/badge/Database-SQLite-f9e2af?style=for-the-badge&logo=sqlite&logoColor=black">
   <img alt="License" src="https://img.shields.io/badge/License-MIT-a6e3a1?style=for-the-badge">
@@ -63,7 +63,13 @@
 ### 2) Install dependencies
 
 ```bash
-pip install -r requirements.txt
+uv sync
+```
+
+Or with pip:
+
+```bash
+pip install -e .
 ```
 
 ---
@@ -99,7 +105,7 @@ tss-bot/
 ├── main.py               # entry point — loads all cogs
 ├── config.py             # colors, emojis, bot name theme
 ├── database.py           # SQLite schema + data access
-├── requirements.txt
+├── pyproject.toml        # project metadata & dependencies
 ├── .env.example
 └── cogs/
     ├── moderation.py

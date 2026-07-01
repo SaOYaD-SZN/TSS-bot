@@ -4,9 +4,9 @@ Run with:  python main.py
 Requires a .env file with DISCORD_TOKEN=your_bot_token_here
 """
 
-import os
 import asyncio
 import logging
+import os
 import time
 from pathlib import Path
 
@@ -14,17 +14,19 @@ import discord
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
-from config import BOT_NAME, COLORS, FOOTER_TEXT, EMOJI
+from config import BOT_NAME, COLORS, EMOJI, FOOTER_TEXT
 from database import Database
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)s: %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="[%(asctime)s] %(levelname)s: %(message)s"
+)
 log = logging.getLogger(BOT_NAME)
 
 INTENTS = discord.Intents.default()
-INTENTS.members = True          # needed for welcome/leave + moderation
+INTENTS.members = True  # needed for welcome/leave + moderation
 INTENTS.message_content = True  # needed for prefix commands + XP gain
 
 
@@ -66,7 +68,7 @@ class TssBot(commands.Bot):
             )
             embed.set_footer(text=FOOTER_TEXT)
             try:
-                if channel:
+                if isinstance(channel, discord.abc.Messageable):
                     await channel.send(content=mention, embed=embed)
                 elif user:
                     await user.send(embed=embed)
@@ -80,9 +82,12 @@ bot = TssBot()
 
 @bot.event
 async def on_ready():
-    log.info(f"{BOT_NAME} is online as {bot.user} (ID: {bot.user.id})")
+    if bot.user:
+        log.info(f"{BOT_NAME} is online as {bot.user} (ID: {bot.user.id})")
     await bot.change_presence(
-        activity=discord.Activity(type=discord.ActivityType.watching, name="over the server ✨")
+        activity=discord.Activity(
+            type=discord.ActivityType.watching, name="over the server ✨"
+        )
     )
 
 
@@ -94,10 +99,16 @@ async def on_command_error(ctx, error):
         await ctx.send(embed=_error_embed("You don't have permission to do that."))
         return
     if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(embed=_error_embed("You're missing a required argument! Check the help command."))
+        await ctx.send(
+            embed=_error_embed(
+                "You're missing a required argument! Check the help command."
+            )
+        )
         return
     log.exception("Unhandled command error", exc_info=error)
-    await ctx.send(embed=_error_embed("Something went a little wrong. Try again in a moment!"))
+    await ctx.send(
+        embed=_error_embed("Something went a little wrong. Try again in a moment!")
+    )
 
 
 def _error_embed(text: str) -> discord.Embed:

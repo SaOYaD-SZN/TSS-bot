@@ -5,6 +5,7 @@ All access goes through the Database class attached to bot.db.
 """
 
 import time
+
 import aiosqlite
 
 from config import DB_PATH
@@ -127,17 +128,23 @@ class Database:
 
     # ---------- generic helpers ----------
     async def execute(self, query: str, params: tuple = ()):
-        await self.conn.execute(query, params)
-        await self.conn.commit()
+        conn = self.conn
+        assert conn is not None
+        await conn.execute(query, params)
+        await conn.commit()
 
     async def fetchone(self, query: str, params: tuple = ()):
-        cur = await self.conn.execute(query, params)
+        conn = self.conn
+        assert conn is not None
+        cur = await conn.execute(query, params)
         row = await cur.fetchone()
         await cur.close()
         return row
 
     async def fetchall(self, query: str, params: tuple = ()):
-        cur = await self.conn.execute(query, params)
+        conn = self.conn
+        assert conn is not None
+        cur = await conn.execute(query, params)
         rows = await cur.fetchall()
         await cur.close()
         return rows
@@ -145,7 +152,9 @@ class Database:
     # ---------- moderation ----------
     async def add_warning(self, guild_id, user_id, moderator_id, reason):
         await self.execute(
-            "INSERT INTO warnings (guild_id, user_id, moderator_id, reason, created_at) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO warnings"
+            " (guild_id, user_id, moderator_id, reason, created_at)"
+            " VALUES (?, ?, ?, ?, ?)",
             (guild_id, user_id, moderator_id, reason, int(time.time())),
         )
 
@@ -167,10 +176,12 @@ class Database:
         )
         if row is None:
             await self.execute(
-                "INSERT INTO levels (guild_id, user_id) VALUES (?, ?)", (guild_id, user_id)
+                "INSERT INTO levels (guild_id, user_id) VALUES (?, ?)",
+                (guild_id, user_id),
             )
             row = await self.fetchone(
-                "SELECT * FROM levels WHERE guild_id=? AND user_id=?", (guild_id, user_id)
+                "SELECT * FROM levels WHERE guild_id=? AND user_id=?",
+                (guild_id, user_id),
             )
         return row
 
@@ -194,10 +205,12 @@ class Database:
         )
         if row is None:
             await self.execute(
-                "INSERT INTO economy (guild_id, user_id) VALUES (?, ?)", (guild_id, user_id)
+                "INSERT INTO economy (guild_id, user_id) VALUES (?, ?)",
+                (guild_id, user_id),
             )
             row = await self.fetchone(
-                "SELECT * FROM economy WHERE guild_id=? AND user_id=?", (guild_id, user_id)
+                "SELECT * FROM economy WHERE guild_id=? AND user_id=?",
+                (guild_id, user_id),
             )
         return row
 
@@ -229,7 +242,9 @@ class Database:
     # ---------- shop / inventory ----------
     async def add_shop_item(self, guild_id, name, price, description):
         await self.execute(
-            "INSERT INTO shop_items (guild_id, name, price, description) VALUES (?, ?, ?, ?)",
+            "INSERT INTO shop_items"
+            " (guild_id, name, price, description)"
+            " VALUES (?, ?, ?, ?)",
             (guild_id, name, price, description),
         )
 
@@ -255,27 +270,36 @@ class Database:
         )
         if row is None:
             await self.execute(
-                "INSERT INTO inventory (guild_id, user_id, item_id, quantity) VALUES (?, ?, ?, ?)",
+                "INSERT INTO inventory"
+                " (guild_id, user_id, item_id, quantity)"
+                " VALUES (?, ?, ?, ?)",
                 (guild_id, user_id, item_id, qty),
             )
         else:
             await self.execute(
-                "UPDATE inventory SET quantity = quantity + ? WHERE guild_id=? AND user_id=? AND item_id=?",
+                "UPDATE inventory SET quantity = quantity + ?"
+                " WHERE guild_id=? AND user_id=? AND item_id=?",
                 (qty, guild_id, user_id, item_id),
             )
 
     async def get_inventory(self, guild_id, user_id):
         return await self.fetchall(
-            """SELECT inventory.quantity, shop_items.name, shop_items.price, shop_items.id
-               FROM inventory JOIN shop_items ON inventory.item_id = shop_items.id
-               WHERE inventory.guild_id=? AND inventory.user_id=? AND inventory.quantity > 0""",
+            """SELECT inventory.quantity, shop_items.name,"
+            " shop_items.price, shop_items.id"
+            " FROM inventory JOIN shop_items"
+            " ON inventory.item_id = shop_items.id"
+            " WHERE inventory.guild_id=?"
+            " AND inventory.user_id=?"
+            " AND inventory.quantity > 0""",
             (guild_id, user_id),
         )
 
     # ---------- reminders ----------
     async def add_reminder(self, user_id, channel_id, guild_id, remind_at, message):
         await self.execute(
-            "INSERT INTO reminders (user_id, channel_id, guild_id, remind_at, message) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO reminders"
+            " (user_id, channel_id, guild_id, remind_at, message)"
+            " VALUES (?, ?, ?, ?, ?)",
             (user_id, channel_id, guild_id, remind_at, message),
         )
 
@@ -289,37 +313,53 @@ class Database:
 
     # ---------- welcome / leave ----------
     async def set_welcome(self, guild_id, channel_id, message):
-        row = await self.fetchone("SELECT * FROM welcome_config WHERE guild_id=?", (guild_id,))
+        row = await self.fetchone(
+            "SELECT * FROM welcome_config WHERE guild_id=?", (guild_id,)
+        )
         if row is None:
             await self.execute(
-                "INSERT INTO welcome_config (guild_id, welcome_channel_id, welcome_message) VALUES (?, ?, ?)",
+                "INSERT INTO welcome_config"
+                " (guild_id, welcome_channel_id, welcome_message)"
+                " VALUES (?, ?, ?)",
                 (guild_id, channel_id, message),
             )
         else:
             await self.execute(
-                "UPDATE welcome_config SET welcome_channel_id=?, welcome_message=? WHERE guild_id=?",
+                "UPDATE welcome_config"
+                " SET welcome_channel_id=?, welcome_message=?"
+                " WHERE guild_id=?",
                 (channel_id, message, guild_id),
             )
 
     async def set_leave(self, guild_id, channel_id, message):
-        row = await self.fetchone("SELECT * FROM welcome_config WHERE guild_id=?", (guild_id,))
+        row = await self.fetchone(
+            "SELECT * FROM welcome_config WHERE guild_id=?", (guild_id,)
+        )
         if row is None:
             await self.execute(
-                "INSERT INTO welcome_config (guild_id, leave_channel_id, leave_message) VALUES (?, ?, ?)",
+                "INSERT INTO welcome_config"
+                " (guild_id, leave_channel_id, leave_message)"
+                " VALUES (?, ?, ?)",
                 (guild_id, channel_id, message),
             )
         else:
             await self.execute(
-                "UPDATE welcome_config SET leave_channel_id=?, leave_message=? WHERE guild_id=?",
+                "UPDATE welcome_config"
+                " SET leave_channel_id=?, leave_message=?"
+                " WHERE guild_id=?",
                 (channel_id, message, guild_id),
             )
 
     async def get_welcome_config(self, guild_id):
-        return await self.fetchone("SELECT * FROM welcome_config WHERE guild_id=?", (guild_id,))
+        return await self.fetchone(
+            "SELECT * FROM welcome_config WHERE guild_id=?", (guild_id,)
+        )
 
     # ---------- tickets ----------
     async def set_ticket_config(self, guild_id, **kwargs):
-        row = await self.fetchone("SELECT * FROM ticket_config WHERE guild_id=?", (guild_id,))
+        row = await self.fetchone(
+            "SELECT * FROM ticket_config WHERE guild_id=?", (guild_id,)
+        )
         if row is None:
             await self.execute(
                 "INSERT INTO ticket_config (guild_id) VALUES (?)", (guild_id,)
@@ -330,7 +370,9 @@ class Database:
             )
 
     async def get_ticket_config(self, guild_id):
-        return await self.fetchone("SELECT * FROM ticket_config WHERE guild_id=?", (guild_id,))
+        return await self.fetchone(
+            "SELECT * FROM ticket_config WHERE guild_id=?", (guild_id,)
+        )
 
     async def create_ticket(self, channel_id, guild_id, user_id):
         await self.execute(
@@ -339,7 +381,9 @@ class Database:
         )
 
     async def get_ticket(self, channel_id):
-        return await self.fetchone("SELECT * FROM tickets WHERE channel_id=?", (channel_id,))
+        return await self.fetchone(
+            "SELECT * FROM tickets WHERE channel_id=?", (channel_id,)
+        )
 
     async def close_ticket(self, channel_id):
         await self.execute(
@@ -370,15 +414,21 @@ class Database:
 
     # ---------- study streaks ----------
     async def get_streak(self, user_id):
-        row = await self.fetchone("SELECT * FROM study_streaks WHERE user_id=?", (user_id,))
+        row = await self.fetchone(
+            "SELECT * FROM study_streaks WHERE user_id=?", (user_id,)
+        )
         if row is None:
             await self.execute(
                 "INSERT INTO study_streaks (user_id) VALUES (?)", (user_id,)
             )
-            row = await self.fetchone("SELECT * FROM study_streaks WHERE user_id=?", (user_id,))
+            row = await self.fetchone(
+                "SELECT * FROM study_streaks WHERE user_id=?", (user_id,)
+            )
         return row
 
-    async def update_streak(self, user_id, current, longest, last_checkin, total_sessions):
+    async def update_streak(
+        self, user_id, current, longest, last_checkin, total_sessions
+    ):
         await self.execute(
             """UPDATE study_streaks SET current_streak=?, longest_streak=?,
                last_checkin=?, total_sessions=? WHERE user_id=?""",
@@ -390,7 +440,9 @@ class Database:
         row = await self.fetchone("SELECT * FROM afk WHERE user_id=?", (user_id,))
         if row is None:
             await self.execute(
-                "INSERT INTO afk (user_id, guild_id, reason, since) VALUES (?, ?, ?, ?)",
+                "INSERT INTO afk"
+                " (user_id, guild_id, reason, since)"
+                " VALUES (?, ?, ?, ?)",
                 (user_id, guild_id, reason, int(time.time())),
             )
         else:

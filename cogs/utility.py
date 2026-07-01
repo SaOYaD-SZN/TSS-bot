@@ -3,9 +3,10 @@
 Server/user info, polls, reminders, AFK system, suggestions, etc.
 """
 
+import contextlib
 import re
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import discord
 from discord import app_commands
@@ -39,25 +40,45 @@ class Utility(commands.Cog):
     # ---------- ping ----------
     @commands.hybrid_command(name="ping", description="Check the bot's latency.")
     async def ping(self, ctx):
-        await ctx.send(embed=util_embed(f"{EMOJI['sparkle']} Pong!", f"Latency: **{round(self.bot.latency * 1000)}ms**"))
+        await ctx.send(
+            embed=util_embed(
+                f"{EMOJI['sparkle']} Pong!",
+                f"Latency: **{round(self.bot.latency * 1000)}ms**",
+            )
+        )
 
     # ---------- userinfo ----------
     @commands.hybrid_command(name="userinfo", description="Show info about a member.")
     @app_commands.describe(member="Member to look up")
-    async def userinfo(self, ctx, member: discord.Member = None):
+    async def userinfo(self, ctx, member: discord.Member | None = None):
         member = member or ctx.author
         embed = util_embed(f"{EMOJI['letter']} {member.display_name}", "")
         embed.set_thumbnail(url=member.display_avatar.url)
         embed.add_field(name="Username", value=str(member), inline=True)
         embed.add_field(name="ID", value=member.id, inline=True)
-        embed.add_field(name="Joined server", value=discord.utils.format_dt(member.joined_at, "R") if member.joined_at else "Unknown", inline=True)
-        embed.add_field(name="Account created", value=discord.utils.format_dt(member.created_at, "R"), inline=True)
-        roles = ", ".join(r.mention for r in member.roles if r.name != "@everyone") or "None"
+        embed.add_field(
+            name="Joined server",
+            value=discord.utils.format_dt(member.joined_at, "R")
+            if member.joined_at
+            else "Unknown",
+            inline=True,
+        )
+        embed.add_field(
+            name="Account created",
+            value=discord.utils.format_dt(member.created_at, "R"),
+            inline=True,
+        )
+        roles = (
+            ", ".join(r.mention for r in member.roles if r.name != "@everyone")
+            or "None"
+        )
         embed.add_field(name="Roles", value=roles, inline=False)
         await ctx.send(embed=embed)
 
     # ---------- serverinfo ----------
-    @commands.hybrid_command(name="serverinfo", description="Show info about this server.")
+    @commands.hybrid_command(
+        name="serverinfo", description="Show info about this server."
+    )
     async def serverinfo(self, ctx):
         guild = ctx.guild
         embed = util_embed(f"{EMOJI['flower']} {guild.name}", "")
@@ -65,16 +86,24 @@ class Utility(commands.Cog):
             embed.set_thumbnail(url=guild.icon.url)
         embed.add_field(name="Owner", value=str(guild.owner), inline=True)
         embed.add_field(name="Members", value=guild.member_count, inline=True)
-        embed.add_field(name="Created", value=discord.utils.format_dt(guild.created_at, "R"), inline=True)
+        embed.add_field(
+            name="Created",
+            value=discord.utils.format_dt(guild.created_at, "R"),
+            inline=True,
+        )
         embed.add_field(name="Roles", value=len(guild.roles), inline=True)
-        embed.add_field(name="Text channels", value=len(guild.text_channels), inline=True)
-        embed.add_field(name="Voice channels", value=len(guild.voice_channels), inline=True)
+        embed.add_field(
+            name="Text channels", value=len(guild.text_channels), inline=True
+        )
+        embed.add_field(
+            name="Voice channels", value=len(guild.voice_channels), inline=True
+        )
         await ctx.send(embed=embed)
 
     # ---------- avatar ----------
     @commands.hybrid_command(name="avatar", description="Get a member's avatar.")
     @app_commands.describe(member="Member to look up")
-    async def avatar(self, ctx, member: discord.Member = None):
+    async def avatar(self, ctx, member: discord.Member | None = None):
         member = member or ctx.author
         embed = util_embed(f"{EMOJI['sparkle']} {member.display_name}'s avatar", "")
         embed.set_image(url=member.display_avatar.url)
@@ -102,27 +131,56 @@ class Utility(commands.Cog):
         await msg.add_reaction("🤍")
 
     # ---------- remindme ----------
-    @commands.hybrid_command(name="remindme", description="Set a reminder, e.g. 1h30m study break.")
-    @app_commands.describe(duration="e.g. 10m, 1h, 1d2h", message="What to remind you about")
+    @commands.hybrid_command(
+        name="remindme", description="Set a reminder, e.g. 1h30m study break."
+    )
+    @app_commands.describe(
+        duration="e.g. 10m, 1h, 1d2h", message="What to remind you about"
+    )
     async def remindme(self, ctx, duration: str, *, message: str = "Reminder!"):
         seconds = parse_duration(duration)
         if not seconds or seconds <= 0:
-            await ctx.send(embed=util_embed(f"{EMOJI['cross']} Invalid duration", "Use a format like `10m`, `1h`, or `1h30m`.", COLORS["error"]))
+            await ctx.send(
+                embed=util_embed(
+                    f"{EMOJI['cross']} Invalid duration",
+                    "Use a format like `10m`, `1h`, or `1h30m`.",
+                    COLORS["error"],
+                )
+            )
             return
         remind_at = int(time.time()) + seconds
-        await self.bot.db.add_reminder(ctx.author.id, ctx.channel.id, ctx.guild.id if ctx.guild else None, remind_at, message)
-        remind_dt = datetime.fromtimestamp(remind_at, tz=timezone.utc)
-        await ctx.send(embed=util_embed(
-            f"{EMOJI['clock']} Reminder set",
-            f"I'll remind you here {discord.utils.format_dt(remind_dt, 'R')}: *{message}*",
-        ))
+        await self.bot.db.add_reminder(
+            ctx.author.id,
+            ctx.channel.id,
+            ctx.guild.id if ctx.guild else None,
+            remind_at,
+            message,
+        )
+        remind_dt = datetime.fromtimestamp(remind_at, tz=UTC)
+        await ctx.send(
+            embed=util_embed(
+                f"{EMOJI['clock']} Reminder set",
+                f"I'll remind you here {discord.utils.format_dt(remind_dt, 'R')}:"
+                f" *{message}*",
+            )
+        )
 
     # ---------- afk ----------
-    @commands.hybrid_command(name="afk", description="Set yourself as AFK with an optional reason.")
+    @commands.hybrid_command(
+        name="afk", description="Set yourself as AFK with an optional reason."
+    )
     @app_commands.describe(reason="Why are you AFK?")
     async def afk(self, ctx, *, reason: str = "AFK"):
-        await self.bot.db.set_afk(ctx.author.id, ctx.guild.id if ctx.guild else None, reason)
-        await ctx.send(embed=util_embed(f"{EMOJI['bear']} AFK set", f"You're now AFK: *{reason}*. I'll let people know if they mention you!"))
+        await self.bot.db.set_afk(
+            ctx.author.id, ctx.guild.id if ctx.guild else None, reason
+        )
+        await ctx.send(
+            embed=util_embed(
+                f"{EMOJI['bear']} AFK set",
+                f"You're now AFK: *{reason}*."
+                " I'll let people know if they mention you!",
+            )
+        )
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -132,30 +190,44 @@ class Utility(commands.Cog):
         afk_row = await self.bot.db.get_afk(message.author.id)
         if afk_row:
             await self.bot.db.clear_afk(message.author.id)
-            try:
-                await message.channel.send(embed=util_embed(f"{EMOJI['sparkle']} Welcome back!", f"{message.author.mention}, I removed your AFK status."), delete_after=8)
-            except discord.HTTPException:
-                pass
+            with contextlib.suppress(discord.HTTPException):
+                await message.channel.send(
+                    embed=util_embed(
+                        f"{EMOJI['sparkle']} Welcome back!",
+                        f"{message.author.mention}, I removed your AFK status.",
+                    ),
+                    delete_after=8,
+                )
         # notify if an AFK user is mentioned
         for user in message.mentions:
             row = await self.bot.db.get_afk(user.id)
             if row:
-                await message.channel.send(embed=util_embed(
-                    f"{EMOJI['letter']} They're AFK",
-                    f"**{user.display_name}** is AFK: *{row['reason']}*",
-                ))
+                await message.channel.send(
+                    embed=util_embed(
+                        f"{EMOJI['letter']} They're AFK",
+                        f"**{user.display_name}** is AFK: *{row['reason']}*",
+                    )
+                )
 
     # ---------- timestamp ----------
-    @commands.hybrid_command(name="timestamp", description="Get the current Discord timestamp tag.")
+    @commands.hybrid_command(
+        name="timestamp", description="Get the current Discord timestamp tag."
+    )
     async def timestamp(self, ctx):
         now = int(time.time())
-        await ctx.send(embed=util_embed(
-            f"{EMOJI['clock']} Timestamp",
-            f"`<t:{now}:F>` → {discord.utils.format_dt(discord.utils.utcnow(), 'F')}",
-        ))
+        await ctx.send(
+            embed=util_embed(
+                f"{EMOJI['clock']} Timestamp",
+                f"`<t:{now}:F>`"
+                f" → {discord.utils.format_dt(discord.utils.utcnow(), 'F')}",
+            )
+        )
 
     # ---------- suggest ----------
-    @commands.hybrid_command(name="suggest", description="Send a suggestion to the server (posts in this channel).")
+    @commands.hybrid_command(
+        name="suggest",
+        description="Send a suggestion to the server (posts in this channel).",
+    )
     @app_commands.describe(suggestion="Your suggestion")
     async def suggest(self, ctx, *, suggestion: str):
         embed = util_embed(f"{EMOJI['flower']} New suggestion", suggestion)
