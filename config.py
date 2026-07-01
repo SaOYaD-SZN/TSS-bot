@@ -10,14 +10,14 @@ BOT_TAGLINE = "your favorite all-in-one cutie 🎀"
 
 # Pastel colour palette (used as embed colours, one per category)
 COLORS = {
-    "primary":    0xFFC1E3,  # soft pink — default / general
+    "primary": 0xFFC1E3,  # soft pink — default / general
     "moderation": 0xFFADAD,  # soft red
-    "economy":    0xB5EAD7,  # soft mint
-    "fun":        0xFFE08A,  # soft yellow
-    "utility":    0xA7D8FF,  # soft sky blue
-    "study":      0xCBAACB,  # soft lavender
-    "tickets":    0x9DE3D0,  # soft teal
-    "error":      0xFF8FA3,  # soft coral (errors, still on theme)
+    "economy": 0xB5EAD7,  # soft mint
+    "fun": 0xFFE08A,  # soft yellow
+    "utility": 0xA7D8FF,  # soft sky blue
+    "study": 0xCBAACB,  # soft lavender
+    "tickets": 0x9DE3D0,  # soft teal
+    "error": 0xFF8FA3,  # soft coral (errors, still on theme)
 }
 
 EMOJI = {
